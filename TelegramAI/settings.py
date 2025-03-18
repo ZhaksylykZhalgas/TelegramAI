@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+import environ
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -26,6 +27,8 @@ SECRET_KEY = 'django-insecure-=!mfg7n#vji^^0e@(1numb!$eucpv8p8!b%!fgn*px4qrlk_yn
 DEBUG = True
 
 ALLOWED_HOSTS = []
+
+env = environ.Env()
 
 
 # Application definition
@@ -123,3 +126,4 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+TOKEN_BOT = str(env('TOKEN_BOT'))
