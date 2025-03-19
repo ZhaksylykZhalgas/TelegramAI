@@ -1,5 +1,6 @@
+import asyncio
 import os
-
+from openai import OpenAI
 import fitz
 from docx import Document
 from telebot import types
@@ -72,58 +73,94 @@ async def read_file(message: types.Message):
     file_id = document.file_id
     file_name = document.file_name
 
-    file_info = await bot.get_file(file_id)
-    file_path = file_info.file_path
-    local_path = f'downloads/{file_name}'
-
-    if not file_info:
-        await bot.send_message(message.chat.id, 'No file found')
-        return
-
     try:
+        file_info = await bot.get_file(file_id)
+        file_path = file_info.file_path
+        local_path = f'downloads/{file_name}'
+
+        if not file_info or not file_info.file_path:
+            await bot.send_message(message.chat.id, 'No file found')
+            return
+
+        logger.info(f"📂 File path from Telegram API: {file_path}")
+
         downloaded_file = await bot.download_file(file_path)
-        os.makedirs(os.path.dirname(local_path), exist_ok=True)
+        os.makedirs('downloads', exist_ok=True)
 
         with open(local_path, 'wb') as new_file:
             new_file.write(downloaded_file)
 
-        extracted_text = ''
-        if file_name.endswith('.txt'):
-            extracted_text = extract_text_from_txt(local_path)
-        elif file_name.endswith('.pdf'):
-            extracted_text = extract_text_from_pdf(local_path)
-        elif file_name.endswith('.docx'):
-            extracted_text = extract_text_from_word(local_path)
-        else:
-            await bot.send_message(message.chat.id, 'Supporting only PDF, WORD or TXT')
+        extracted_text = extract_text_from_file(local_path, file_name)
+
+        if not extracted_text:
+            await bot.send_message(message.chat.id, 'Not successfully extracted')
             return
 
-        if extracted_text:
-            await bot.send_message(message.chat.id, f'Extracted text:\n\n ```{extracted_text}```', parse_mode='Markdown')
-        else:
-            await bot.send_message(message.chat.id, 'No text extracted')
+        await bot.send_message(message.chat.id, 'Analyzing...')
+
+        extracted_text_ai = await AI_write(extracted_text)
+        await bot.send_message(message.chat.id, f'Extracted text:\n {extracted_text_ai}')
 
     except Exception as err:
-        await bot.send_message(message.chat.id, 'Wrong while downloading file')
+        await bot.send_message(message.chat.id, 'Wrong while downloading file {}'.format(str(err)))
     finally:
         if os.path.exists(local_path):
             os.remove(local_path)
+
+
+def extract_text_from_file(file_path, file_name):
+    if file_name.endswith('.txt'):
+        return extract_text_from_txt(file_path)
+    elif file_name.endswith('.pdf'):
+        return extract_text_from_pdf(file_path)
+    elif file_name.endswith('.docx'):
+        return extract_text_from_word(file_path)
+    else:
+        return f'Supported file types are txt, pdf, docx'
+
 
 def extract_text_from_txt(file_path):
     with open(file_path, 'r', encoding='utf-8') as f:
         return f.read().strip()
 
+
 def extract_text_from_pdf(file_path):
     text = ''
     with fitz.open(file_path) as pdf:
         for page in pdf:
-            text += page.getText()
+            text += page.get_text()
     return text.strip()
+
 
 def extract_text_from_word(file_path):
     doc = Document(file_path)
     return '\n'.join([para.text for para in doc.paragraphs]).strip()
 
+
 @bot.message_handler(func=lambda message: True)
 async def echo_message(message):
     await bot.reply_to(message, message.text)
+
+
+async def AI_write(text):
+    client = OpenAI(api_key=settings.OPEN_API_KEY)
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {
+                    "role": "system",
+                    "content": settings.REQUEST
+                },
+                {
+                    "role": "user",
+                    "content": text
+                }
+            ],
+            temperature=0.5,
+            max_tokens=500,
+            top_p=0.5
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as err:
+        return f'Error while using AI: {str(err)}'

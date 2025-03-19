@@ -123,6 +123,8 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 TOKEN_BOT = str(env('TOKEN_BOT'))
+OPEN_API_KEY = env.str('OPEN_API_KEY')
+REQUEST = env.str('REQUEST')
 
 ID_TELEGRAM_ADMIN = env.int('ID_TELEGRAM_ADMIN')
 
