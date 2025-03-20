@@ -161,6 +161,7 @@ async def AI_write(text):
             max_tokens=500,
             top_p=0.5
         )
+        #LIMIT FOR user
         return response.choices[0].message.content.strip()
     except Exception as err:
         return f'Error while using AI: {str(err)}'
