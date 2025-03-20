@@ -29,7 +29,7 @@ async def chat_member_handler_bot(message):
     except AttributeError as err:
         logger.info(f'Not a valid invite link: {err}')
 
-    current_subscribe_status = status[1]
+    current_subscribe_status = status[-1]
     if current_subscribe_status == 'member':
         status_text = 'Subscribed'
     elif current_subscribe_status == 'left':
@@ -82,7 +82,7 @@ async def read_file(message: types.Message):
             await bot.send_message(message.chat.id, 'No file found')
             return
 
-        logger.info(f"📂 File path from Telegram API: {file_path}")
+        logger.info(f"File path: {file_path}")
 
         downloaded_file = await bot.download_file(file_path)
         os.makedirs('downloads', exist_ok=True)
